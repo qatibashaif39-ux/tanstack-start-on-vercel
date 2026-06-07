@@ -84,7 +84,7 @@ function PostPage() {
           </div>
 
           <div className="space-y-6">
-            {p.content.map((block, i) => (
+            {p.content.map((block: { heading?: string; paragraph: string }, i: number) => (
               <div key={i}>
                 {block.heading && <h2 className="text-2xl md:text-3xl font-black mt-10 mb-4">{block.heading}</h2>}
                 <p className="text-lg text-muted-foreground leading-loose">{block.paragraph}</p>
@@ -94,7 +94,7 @@ function PostPage() {
 
           <div className="mt-12 pt-8 border-t border-border">
             <div className="flex flex-wrap gap-2">
-              {p.tags.map((t) => (
+              {p.tags.map((t: string) => (
                 <span key={t} className="px-4 py-1.5 rounded-full glass text-sm">#{t}</span>
               ))}
             </div>
