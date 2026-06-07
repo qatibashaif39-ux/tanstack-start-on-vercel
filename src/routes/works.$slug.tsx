@@ -104,7 +104,7 @@ function ProjectDetail() {
             <section className="mb-10">
               <h2 className="text-2xl md:text-3xl font-black mb-6">النتائج</h2>
               <div className="grid sm:grid-cols-3 gap-4">
-                {p.results.map((r) => (
+                {p.results.map((r: string) => (
                   <div key={r} className="glass rounded-2xl p-6 glow-border">
                     <Check className="w-6 h-6 text-brand mb-3" strokeWidth={3} />
                     <p className="font-bold leading-relaxed">{r}</p>
@@ -116,7 +116,7 @@ function ProjectDetail() {
             <section className="mb-10">
               <h2 className="text-2xl md:text-3xl font-black mb-4">التقنيات المستخدمة</h2>
               <div className="flex flex-wrap gap-2">
-                {p.tech.map((t) => (
+                {p.tech.map((t: string) => (
                   <span key={t} className="px-4 py-2 rounded-full glass text-sm font-semibold">{t}</span>
                 ))}
               </div>
