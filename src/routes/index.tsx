@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import heroBg from "@/assets/hero-bg.jpg";
 import work1 from "@/assets/work-1.jpg";
 import work2 from "@/assets/work-2.jpg";
@@ -6,27 +7,41 @@ import work3 from "@/assets/work-3.jpg";
 import {
   Code2, Smartphone, ShoppingCart, Cloud, Palette, Search,
   Rocket, Shield, Zap, Users, Award, ArrowLeft, Check,
-  Github, Twitter, Linkedin, Mail, Phone, MapPin, Sparkles,
+  Mail, Phone, MapPin, Sparkles, Send,
 } from "lucide-react";
+import { Navbar } from "@/components/site/Navbar";
+import { Footer } from "@/components/site/Footer";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "كود كرافت — شركة تطوير برمجيات ومواقع وتطبيقات احترافية" },
-      { name: "description", content: "نحوّل أفكارك إلى منتجات رقمية متقنة. تصميم مواقع، تطبيقات جوال، متاجر إلكترونية، وحلول برمجية مخصصة بأعلى معايير الجودة." },
+      { name: "description", content: "كود كرافت — شركة برمجة عربية متخصصة في تصميم وتطوير المواقع، تطبيقات الجوال، المتاجر الإلكترونية، وحلول البرمجيات المخصصة بأعلى جودة وأسرع أداء." },
+      { name: "keywords", content: "شركة برمجة, تصميم مواقع, تطوير تطبيقات, متاجر إلكترونية, شركة تطوير ويب, شركة برمجيات سعودية" },
       { property: "og:title", content: "كود كرافت — شركة تطوير برمجيات احترافية" },
-      { property: "og:description", content: "فريق متخصص في بناء منتجات رقمية تتفوق على المنافسين." },
+      { property: "og:description", content: "نحوّل أفكارك إلى منتجات رقمية تتفوق على المنافسين." },
       { property: "og:url", content: "/" },
+      { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "كود كرافت" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "كود كرافت — شركة تطوير برمجيات" },
+      { name: "twitter:description", content: "نحوّل أفكارك إلى منتجات رقمية استثنائية." },
     ],
-    links: [{ rel: "canonical", href: "/" }],
+    links: [
+      { rel: "canonical", href: "/" },
+      { rel: "preload", as: "image", href: heroBg, fetchpriority: "high" } as any,
+    ],
     scripts: [{
       type: "application/ld+json",
       children: JSON.stringify({
         "@context": "https://schema.org",
         "@type": "Organization",
         name: "CodeCraft",
+        alternateName: "كود كرافت",
         description: "شركة تطوير برمجيات متخصصة في المواقع والتطبيقات والمتاجر الإلكترونية",
         url: "/",
+        email: "bilalshaif@gmail.com",
+        sameAs: ["https://github.com", "https://twitter.com", "https://linkedin.com"],
       }),
     }],
   }),
@@ -51,7 +66,7 @@ const stats = [
 
 const techs = ["React", "Next.js", "TypeScript", "Node.js", "Python", "Flutter", "Swift", "Kotlin", "AWS", "Docker", "PostgreSQL", "GraphQL", "TailwindCSS", "Figma"];
 
-const process = [
+const processSteps = [
   { num: "01", title: "الاستكشاف والتخطيط", desc: "نفهم أهدافك بعمق ونرسم خارطة طريق واضحة للمشروع." },
   { num: "02", title: "التصميم والنماذج", desc: "نصمم تجربة بصرية متقنة تعكس هوية علامتك التجارية." },
   { num: "03", title: "التطوير والبرمجة", desc: "نبني المنتج بكود نظيف وقابل للتوسع باستخدام أفضل التقنيات." },
@@ -59,9 +74,9 @@ const process = [
 ];
 
 const works = [
-  { img: work1, title: "منصة تحليلات بيانات", tag: "تطبيق ويب" },
-  { img: work2, title: "تطبيق توصيل ذكي", tag: "تطبيق جوال" },
-  { img: work3, title: "متجر إلكتروني فاخر", tag: "متجر إلكتروني" },
+  { slug: "data-analytics-platform", img: work1, title: "منصة تحليلات بيانات", tag: "تطبيق ويب" },
+  { slug: "smart-delivery-app", img: work2, title: "تطبيق توصيل ذكي", tag: "تطبيق جوال" },
+  { slug: "luxury-ecommerce-store", img: work3, title: "متجر إلكتروني فاخر", tag: "متجر إلكتروني" },
 ];
 
 const testimonials = [
@@ -97,38 +112,21 @@ function HomePage() {
   );
 }
 
-function Navbar() {
-  return (
-    <header className="fixed top-0 inset-x-0 z-50 glass">
-      <div className="container-x flex items-center justify-between h-16">
-        <a href="#" className="flex items-center gap-2 font-display font-extrabold text-lg">
-          <div className="w-9 h-9 rounded-xl bg-[var(--gradient-brand)] grid place-items-center">
-            <Code2 className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <span>كود كرافت</span>
-        </a>
-        <nav className="hidden md:flex items-center gap-8 text-sm">
-          <a href="#services" className="text-muted-foreground hover:text-foreground transition">خدماتنا</a>
-          <a href="#works" className="text-muted-foreground hover:text-foreground transition">أعمالنا</a>
-          <a href="#process" className="text-muted-foreground hover:text-foreground transition">منهجيتنا</a>
-          <a href="#why" className="text-muted-foreground hover:text-foreground transition">لماذا نحن</a>
-          <a href="#contact" className="text-muted-foreground hover:text-foreground transition">تواصل</a>
-        </nav>
-        <a href="#contact" className="inline-flex items-center gap-2 rounded-full bg-[var(--gradient-brand)] px-5 py-2 text-sm font-semibold text-primary-foreground hover:shadow-[var(--shadow-glow)] transition-all">
-          ابدأ مشروعك
-          <ArrowLeft className="w-4 h-4" />
-        </a>
-      </div>
-    </header>
-  );
-}
-
 function Hero() {
   return (
     <section className="relative pt-32 pb-24 md:pt-44 md:pb-32 overflow-hidden">
       <div className="absolute inset-0 -z-10">
-        <img src={heroBg} alt="" className="w-full h-full object-cover opacity-30" width={1920} height={1080} />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/60 to-background" />
+        <img
+          src={heroBg}
+          alt=""
+          className="w-full h-full object-cover opacity-25"
+          width={1920}
+          height={1280}
+          fetchPriority="high"
+          decoding="async"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/70 to-background" />
+        <div className="absolute inset-0 grid-bg opacity-30" />
       </div>
       <div className="container-x text-center">
         <div className="inline-flex items-center gap-2 rounded-full glass px-4 py-1.5 text-xs mb-8 animate-fade-up">
@@ -144,13 +142,13 @@ function Hero() {
           كود كرافت — شركة تطوير برمجيات تجمع بين الإبداع والتقنية لبناء مواقع، تطبيقات، ومتاجر إلكترونية تتفوق على المنافسين.
         </p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4 animate-fade-up" style={{ animationDelay: "0.3s" }}>
-          <a href="#contact" className="inline-flex items-center gap-2 rounded-full bg-[var(--gradient-brand)] px-7 py-3.5 font-semibold text-primary-foreground hover:shadow-[var(--shadow-glow)] transition-all hover:scale-105">
+          <Link to="/" hash="contact" className="inline-flex items-center gap-2 rounded-full bg-[var(--gradient-brand)] px-7 py-3.5 font-semibold text-primary-foreground hover:shadow-[var(--shadow-glow)] transition-all hover:scale-105">
             احصل على عرض سعر
             <ArrowLeft className="w-4 h-4" />
-          </a>
-          <a href="#works" className="inline-flex items-center gap-2 rounded-full glass px-7 py-3.5 font-semibold hover:bg-surface-elevated transition">
+          </Link>
+          <Link to="/works" className="inline-flex items-center gap-2 rounded-full glass px-7 py-3.5 font-semibold hover:bg-surface-elevated transition">
             استعرض أعمالنا
-          </a>
+          </Link>
         </div>
       </div>
     </section>
@@ -231,16 +229,21 @@ function Works() {
         <SectionHeader tag="معرض الأعمال" title="مشاريع نفخر بها" desc="نماذج من مشاريعنا التي ساعدت عملاءنا على تحقيق نمو حقيقي." />
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {works.map((w) => (
-            <div key={w.title} className="group relative overflow-hidden rounded-2xl glass">
+            <Link key={w.slug} to="/works/$slug" params={{ slug: w.slug }} className="group relative overflow-hidden rounded-2xl glass hover:border-brand/50 transition">
               <div className="aspect-[4/3] overflow-hidden">
-                <img src={w.img} alt={w.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                <img src={w.img} alt={w.title} loading="lazy" decoding="async" width={1024} height={768} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
               </div>
               <div className="p-6">
                 <span className="text-xs text-brand font-bold tracking-widest uppercase">{w.tag}</span>
                 <h3 className="mt-2 text-xl font-bold">{w.title}</h3>
               </div>
-            </div>
+            </Link>
           ))}
+        </div>
+        <div className="text-center mt-10">
+          <Link to="/works" className="inline-flex items-center gap-2 rounded-full glass px-6 py-3 font-semibold hover:text-brand transition">
+            كل الأعمال <ArrowLeft className="w-4 h-4" />
+          </Link>
         </div>
       </div>
     </section>
@@ -253,7 +256,7 @@ function Process() {
       <div className="container-x">
         <SectionHeader tag="منهجيتنا" title="كيف نعمل" desc="عملية مدروسة تضمن تسليم منتج عالي الجودة في الوقت المحدد." />
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {process.map((p) => (
+          {processSteps.map((p) => (
             <div key={p.num} className="relative">
               <div className="text-7xl font-black text-gradient opacity-60 mb-4">{p.num}</div>
               <h3 className="text-xl font-bold mb-2">{p.title}</h3>
@@ -319,7 +322,7 @@ function Testimonials() {
             <div key={t.name} className="glass rounded-2xl p-8 hover:border-brand/50 transition">
               <div className="flex gap-1 mb-4">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <span key={i} className="text-brand">★</span>
+                  <span key={i} className="text-gold">★</span>
                 ))}
               </div>
               <p className="text-muted-foreground leading-relaxed mb-6">"{t.text}"</p>
@@ -341,59 +344,87 @@ function Testimonials() {
 }
 
 function CTA() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+
+  const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const canSend = name.trim().length >= 2 && validEmail && message.trim().length >= 10;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSend) return;
+    const subject = encodeURIComponent(`طلب جديد من ${name}`);
+    const body = encodeURIComponent(`الاسم: ${name}\nالبريد: ${email}\n\nالرسالة:\n${message}`);
+    window.location.href = `mailto:bilalshaif@gmail.com?subject=${subject}&body=${body}`;
+  };
+
   return (
     <section id="contact" className="py-24">
       <div className="container-x">
-        <div className="relative overflow-hidden rounded-3xl glass glow-border p-10 md:p-16 text-center">
+        <div className="relative overflow-hidden rounded-3xl glass glow-border p-8 md:p-16">
           <div className="absolute inset-0 -z-10 opacity-50" style={{ background: "var(--gradient-mesh)" }} />
-          <h2 className="text-4xl md:text-6xl font-black mb-6">
-            جاهز لبدء <span className="text-gradient">مشروعك القادم؟</span>
-          </h2>
-          <p className="max-w-2xl mx-auto text-lg text-muted-foreground mb-10">
-            تواصل معنا اليوم واحصل على استشارة مجانية وعرض سعر مفصّل خلال 24 ساعة.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-4 mb-10">
-            <a href="mailto:hello@codecraft.dev" className="inline-flex items-center gap-2 rounded-full bg-[var(--gradient-brand)] px-7 py-3.5 font-semibold text-primary-foreground hover:shadow-[var(--shadow-glow)] transition-all hover:scale-105">
-              <Mail className="w-4 h-4" />
-              راسلنا الآن
-            </a>
-            <a href="tel:+966500000000" className="inline-flex items-center gap-2 rounded-full glass px-7 py-3.5 font-semibold hover:bg-surface-elevated transition">
-              <Phone className="w-4 h-4" />
-              اتصل بنا
-            </a>
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-8 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-brand" /> hello@codecraft.dev</div>
-            <div className="flex items-center gap-2"><Phone className="w-4 h-4 text-brand" /> +966 50 000 0000</div>
-            <div className="flex items-center gap-2"><MapPin className="w-4 h-4 text-brand" /> الرياض، المملكة العربية السعودية</div>
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <span className="inline-block text-xs font-bold text-brand tracking-widest uppercase mb-4">تواصل معنا</span>
+              <h2 className="text-4xl md:text-5xl font-black mb-6">
+                ابدأ <span className="text-gradient">مشروعك القادم</span>
+              </h2>
+              <p className="text-lg text-muted-foreground mb-8 leading-relaxed">
+                املأ النموذج وسنعود إليك خلال 24 ساعة بعرض سعر مفصّل واستشارة مجانية.
+              </p>
+              <div className="space-y-4 text-sm">
+                <div className="flex items-center gap-3"><Mail className="w-5 h-5 text-brand" /> bilalshaif@gmail.com</div>
+                <div className="flex items-center gap-3"><Phone className="w-5 h-5 text-brand" /> +966 50 000 0000</div>
+                <div className="flex items-center gap-3"><MapPin className="w-5 h-5 text-brand" /> الرياض، المملكة العربية السعودية</div>
+              </div>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold mb-2">الاسم</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value.slice(0, 100))}
+                  className="w-full rounded-xl glass px-4 py-3 outline-none focus:border-brand transition"
+                  placeholder="اسمك الكريم"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2">البريد الإلكتروني</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value.slice(0, 255))}
+                  className="w-full rounded-xl glass px-4 py-3 outline-none focus:border-brand transition"
+                  placeholder="example@email.com"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2">تفاصيل المشروع</label>
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value.slice(0, 2000))}
+                  rows={5}
+                  className="w-full rounded-xl glass px-4 py-3 outline-none focus:border-brand transition resize-none"
+                  placeholder="أخبرنا عن مشروعك وأهدافك..."
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={!canSend}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--gradient-brand)] px-7 py-3.5 font-bold text-primary-foreground hover:shadow-[var(--shadow-glow)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Send className="w-4 h-4" />
+                إرسال الطلب
+              </button>
+            </form>
           </div>
         </div>
       </div>
     </section>
-  );
-}
-
-function Footer() {
-  return (
-    <footer className="border-t border-border py-12 mt-12">
-      <div className="container-x">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2 font-display font-extrabold">
-            <div className="w-8 h-8 rounded-lg bg-[var(--gradient-brand)] grid place-items-center">
-              <Code2 className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span>كود كرافت</span>
-          </div>
-          <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} كود كرافت. جميع الحقوق محفوظة.</p>
-          <div className="flex items-center gap-3">
-            {[Github, Twitter, Linkedin].map((Icon, i) => (
-              <a key={i} href="#" className="w-9 h-9 rounded-full glass grid place-items-center hover:text-brand transition">
-                <Icon className="w-4 h-4" />
-              </a>
-            ))}
-          </div>
-        </div>
-      </div>
-    </footer>
   );
 }
