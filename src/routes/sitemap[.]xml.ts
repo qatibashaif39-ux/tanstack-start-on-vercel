@@ -1,7 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
-import { posts } from "@/data/posts";
-import { projects } from "@/data/projects";
 
 const BASE_URL = "";
 
@@ -9,21 +7,27 @@ export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async () => {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const today = new Date().toISOString().split("T")[0];
+        const [{ data: projects }, { data: posts }] = await Promise.all([
+          supabaseAdmin.from("projects").select("slug").eq("published", true),
+          supabaseAdmin.from("posts").select("slug, published_at").eq("published", true),
+        ]);
+
         const staticEntries = [
           { path: "/", changefreq: "weekly", priority: "1.0", lastmod: today },
           { path: "/works", changefreq: "weekly", priority: "0.9", lastmod: today },
           { path: "/blog", changefreq: "daily", priority: "0.9", lastmod: today },
         ];
-        const workEntries = projects.map((p) => ({
+        const workEntries = (projects ?? []).map((p) => ({
           path: `/works/${p.slug}`, changefreq: "monthly", priority: "0.7", lastmod: today,
         }));
-        const blogEntries = posts.map((p) => ({
-          path: `/blog/${p.slug}`, changefreq: "monthly", priority: "0.7", lastmod: p.date,
+        const blogEntries = (posts ?? []).map((p) => ({
+          path: `/blog/${p.slug}`, changefreq: "monthly", priority: "0.7",
+          lastmod: (p.published_at as string)?.slice(0, 10) ?? today,
         }));
 
-        const all = [...staticEntries, ...workEntries, ...blogEntries];
-        const urls = all.map((e) => `  <url>
+        const urls = [...staticEntries, ...workEntries, ...blogEntries].map((e) => `  <url>
     <loc>${BASE_URL}${e.path}</loc>
     <lastmod>${e.lastmod}</lastmod>
     <changefreq>${e.changefreq}</changefreq>
@@ -36,7 +40,7 @@ ${urls}
 </urlset>`;
 
         return new Response(xml, {
-          headers: { "Content-Type": "application/xml", "Cache-Control": "public, max-age=3600" },
+          headers: { "Content-Type": "application/xml", "Cache-Control": "public, max-age=600" },
         });
       },
     },
