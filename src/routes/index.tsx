@@ -346,17 +346,32 @@ function Testimonials() {
 function CTA() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
 
   const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const canSend = name.trim().length >= 2 && validEmail && message.trim().length >= 10;
+  const canSend = name.trim().length >= 2 && validEmail && message.trim().length >= 10 && !busy;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSend) return;
-    const subject = encodeURIComponent(`طلب جديد من ${name}`);
-    const body = encodeURIComponent(`الاسم: ${name}\nالبريد: ${email}\n\nالرسالة:\n${message}`);
-    window.location.href = `mailto:bilalshaif@gmail.com?subject=${subject}&body=${body}`;
+    setBusy(true);
+    try {
+      const { submitContact } = await import("@/lib/content.functions");
+      await submitContact({ data: { name, email, phone, subject, message } });
+      setSent(true);
+      setName(""); setEmail(""); setPhone(""); setSubject(""); setMessage("");
+      const w = window as any;
+      if (typeof w.gtag === "function") w.gtag("event", "contact_submit", { method: "website" });
+    } catch (err: any) {
+      const { toast } = await import("sonner");
+      toast.error(err?.message ?? "تعذّر الإرسال، حاول مجدداً");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -379,49 +394,47 @@ function CTA() {
                 <div className="flex items-center gap-3"><MapPin className="w-5 h-5 text-brand" /> الرياض، المملكة العربية السعودية</div>
               </div>
             </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold mb-2">الاسم</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value.slice(0, 100))}
-                  className="w-full rounded-xl glass px-4 py-3 outline-none focus:border-brand transition"
-                  placeholder="اسمك الكريم"
-                  required
-                />
+            {sent ? (
+              <div className="glass rounded-2xl p-10 text-center">
+                <div className="w-16 h-16 mx-auto rounded-full bg-[var(--gradient-brand)] grid place-items-center mb-4">
+                  <Check className="w-8 h-8 text-primary-foreground" strokeWidth={3} />
+                </div>
+                <h3 className="text-2xl font-black mb-3">تم إرسال طلبك بنجاح</h3>
+                <p className="text-muted-foreground mb-6">سنعود إليك خلال 24 ساعة. شكراً لثقتك بنا.</p>
+                <button onClick={() => setSent(false)} className="text-sm text-brand hover:underline">إرسال طلب آخر</button>
               </div>
-              <div>
-                <label className="block text-sm font-semibold mb-2">البريد الإلكتروني</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value.slice(0, 255))}
-                  className="w-full rounded-xl glass px-4 py-3 outline-none focus:border-brand transition"
-                  placeholder="example@email.com"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-2">تفاصيل المشروع</label>
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value.slice(0, 2000))}
-                  rows={5}
-                  className="w-full rounded-xl glass px-4 py-3 outline-none focus:border-brand transition resize-none"
-                  placeholder="أخبرنا عن مشروعك وأهدافك..."
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={!canSend}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--gradient-brand)] px-7 py-3.5 font-bold text-primary-foreground hover:shadow-[var(--shadow-glow)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Send className="w-4 h-4" />
-                إرسال الطلب
-              </button>
-            </form>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">الاسم</label>
+                    <input type="text" value={name} onChange={(e) => setName(e.target.value.slice(0, 100))} className="w-full rounded-xl glass px-4 py-3 outline-none focus:border-brand transition" placeholder="اسمك الكريم" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">البريد</label>
+                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value.slice(0, 255))} className="w-full rounded-xl glass px-4 py-3 outline-none focus:border-brand transition" placeholder="example@email.com" required />
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">الهاتف (اختياري)</label>
+                    <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value.slice(0, 30))} className="w-full rounded-xl glass px-4 py-3 outline-none focus:border-brand transition" placeholder="+966…" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">الموضوع</label>
+                    <input type="text" value={subject} onChange={(e) => setSubject(e.target.value.slice(0, 200))} className="w-full rounded-xl glass px-4 py-3 outline-none focus:border-brand transition" placeholder="نوع المشروع" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2">تفاصيل المشروع</label>
+                  <textarea value={message} onChange={(e) => setMessage(e.target.value.slice(0, 2000))} rows={5} className="w-full rounded-xl glass px-4 py-3 outline-none focus:border-brand transition resize-none" placeholder="أخبرنا عن مشروعك وأهدافك..." required />
+                </div>
+                <button type="submit" disabled={!canSend} className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--gradient-brand)] px-7 py-3.5 font-bold text-primary-foreground hover:shadow-[var(--shadow-glow)] transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                  <Send className="w-4 h-4" />
+                  {busy ? "جارٍ الإرسال…" : "إرسال الطلب"}
+                </button>
+              </form>
+            )}
           </div>
         </div>
       </div>
