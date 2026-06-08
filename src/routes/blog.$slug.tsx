@@ -94,7 +94,7 @@ function PostPage() {
           {p.tags.length > 0 && (
             <div className="mt-12 pt-8 border-t border-border">
               <div className="flex flex-wrap gap-2">
-                {p.tags.map((t) => <span key={t} className="px-4 py-1.5 rounded-full glass text-sm">#{t}</span>)}
+                {p.tags.map((t: string) => <span key={t} className="px-4 py-1.5 rounded-full glass text-sm">#{t}</span>)}
               </div>
             </div>
           )}

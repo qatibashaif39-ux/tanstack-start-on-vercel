@@ -107,7 +107,7 @@ function ProjectDetail() {
             <section className="mb-10">
               <h2 className="text-2xl md:text-3xl font-black mb-4">التقنيات المستخدمة</h2>
               <div className="flex flex-wrap gap-2">
-                {p.tags.map((t) => <span key={t} className="px-4 py-2 rounded-full glass text-sm font-semibold">{t}</span>)}
+                {p.tags.map((t: string) => <span key={t} className="px-4 py-2 rounded-full glass text-sm font-semibold">{t}</span>)}
               </div>
             </section>
           )}
