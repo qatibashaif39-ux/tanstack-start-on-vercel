@@ -1,15 +1,25 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft } from "lucide-react";
 import { Navbar } from "@/components/site/Navbar";
 import { Footer } from "@/components/site/Footer";
-import { projects, projectCategories } from "@/data/projects";
+import { listProjects } from "@/lib/content.functions";
+
+const projectCategories = [
+  { id: "all", label: "الكل" },
+  { id: "web", label: "ويب" },
+  { id: "mobile", label: "جوال" },
+  { id: "ecommerce", label: "متاجر" },
+  { id: "cloud", label: "سحابة" },
+] as const;
 
 export const Route = createFileRoute("/works")({
   head: () => ({
     meta: [
       { title: "أعمالنا — معرض مشاريع كود كرافت" },
-      { name: "description", content: "استعرض مشاريع كود كرافت المتنوّعة: تطبيقات ويب، تطبيقات جوال، متاجر إلكترونية، وحلول سحابية احترافية." },
+      { name: "description", content: "استعرض مشاريع كود كرافت: تطبيقات ويب، تطبيقات جوال، متاجر إلكترونية، وحلول سحابية احترافية." },
       { property: "og:title", content: "أعمالنا — معرض مشاريع كود كرافت" },
       { property: "og:description", content: "نماذج حقيقية من مشاريع برمجية ساعدت عملاءنا على تحقيق نمو ملموس." },
       { property: "og:url", content: "/works" },
@@ -18,11 +28,16 @@ export const Route = createFileRoute("/works")({
     ],
     links: [{ rel: "canonical", href: "/works" }],
   }),
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData({ queryKey: ["projects"], queryFn: () => listProjects() }),
   component: WorksPage,
 });
 
 function WorksPage() {
+  const fetchProjects = useServerFn(listProjects);
+  const { data } = useQuery({ queryKey: ["projects"], queryFn: () => fetchProjects() });
   const [filter, setFilter] = useState<string>("all");
+  const projects = data ?? [];
   const filtered = filter === "all" ? projects : projects.filter((p) => p.category === filter);
 
   return (
@@ -68,11 +83,15 @@ function WorksPage() {
                 className="group relative overflow-hidden rounded-2xl glass hover:border-brand/50 transition-all hover:translate-y-[-4px]"
               >
                 <div className="aspect-[4/3] cover-mesh relative overflow-hidden">
-                  <div className="absolute inset-0 grid place-items-center">
-                    <span className="text-5xl font-black text-gradient opacity-30">{p.year}</span>
-                  </div>
+                  {p.cover ? (
+                    <img src={p.cover} alt={p.title} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  ) : (
+                    <div className="absolute inset-0 grid place-items-center">
+                      <span className="text-5xl font-black text-gradient opacity-30">{p.year}</span>
+                    </div>
+                  )}
                   <div className="absolute top-4 right-4">
-                    <span className="glass px-3 py-1 rounded-full text-xs font-bold">{p.tag}</span>
+                    <span className="glass px-3 py-1 rounded-full text-xs font-bold">{p.category}</span>
                   </div>
                 </div>
                 <div className="p-6">
@@ -88,6 +107,7 @@ function WorksPage() {
               </Link>
             ))}
           </div>
+          {!filtered.length && <p className="text-center text-muted-foreground py-12">لا توجد مشاريع في هذه الفئة.</p>}
         </div>
       </section>
 

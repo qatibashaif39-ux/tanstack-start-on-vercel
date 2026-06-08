@@ -2,11 +2,11 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ArrowRight, Calendar, Clock, User } from "lucide-react";
 import { Navbar } from "@/components/site/Navbar";
 import { Footer } from "@/components/site/Footer";
-import { posts } from "@/data/posts";
+import { getPost } from "@/lib/content.functions";
 
 export const Route = createFileRoute("/blog/$slug")({
-  loader: ({ params }) => {
-    const post = posts.find((p) => p.slug === params.slug);
+  loader: async ({ params }) => {
+    const post = await getPost({ data: { slug: params.slug } });
     if (!post) throw notFound();
     return { post };
   },
@@ -19,14 +19,13 @@ export const Route = createFileRoute("/blog/$slug")({
         { name: "description", content: p.excerpt },
         { name: "keywords", content: p.tags.join(", ") },
         { name: "author", content: p.author },
-        { property: "article:published_time", content: p.date },
+        { property: "article:published_time", content: p.published_at },
         { property: "og:title", content: p.title },
         { property: "og:description", content: p.excerpt },
         { property: "og:url", content: `/blog/${p.slug}` },
         { property: "og:type", content: "article" },
+        ...(p.cover ? [{ property: "og:image", content: p.cover }] : []),
         { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:title", content: p.title },
-        { name: "twitter:description", content: p.excerpt },
       ],
       links: [{ rel: "canonical", href: `/blog/${p.slug}` }],
       scripts: [{
@@ -36,7 +35,7 @@ export const Route = createFileRoute("/blog/$slug")({
           "@type": "Article",
           headline: p.title,
           description: p.excerpt,
-          datePublished: p.date,
+          datePublished: p.published_at,
           author: { "@type": "Organization", name: p.author },
           publisher: { "@type": "Organization", name: "CodeCraft" },
           inLanguage: "ar",
@@ -56,10 +55,17 @@ export const Route = createFileRoute("/blog/$slug")({
   ),
 });
 
+function renderContent(text: string) {
+  const blocks = text.split(/\n\n+/).map((b) => b.trim()).filter(Boolean);
+  return blocks.map((block, i) => {
+    if (block.startsWith("## ")) return <h2 key={i} className="text-2xl md:text-3xl font-black mt-10 mb-4">{block.slice(3)}</h2>;
+    if (block.startsWith("# ")) return <h2 key={i} className="text-2xl md:text-3xl font-black mt-10 mb-4">{block.slice(2)}</h2>;
+    return <p key={i} className="text-lg text-muted-foreground leading-loose">{block}</p>;
+  });
+}
+
 function PostPage() {
   const { post: p } = Route.useLoaderData();
-  const related = posts.filter((x) => x.slug !== p.slug).slice(0, 3);
-
   return (
     <div className="min-h-screen">
       <Navbar />
@@ -69,53 +75,29 @@ function PostPage() {
             <ArrowRight className="w-4 h-4" /> كل المقالات
           </Link>
 
-          <span className="inline-block text-xs font-bold text-brand tracking-widest uppercase mb-4">{p.category}</span>
+          {p.tags[0] && <span className="inline-block text-xs font-bold text-brand tracking-widest uppercase mb-4">{p.tags[0]}</span>}
           <h1 className="text-3xl md:text-5xl font-black mb-6 leading-tight">{p.title}</h1>
           <p className="text-xl text-muted-foreground leading-relaxed mb-8">{p.excerpt}</p>
 
           <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground pb-8 border-b border-border mb-8">
             <span className="flex items-center gap-2"><User className="w-4 h-4 text-brand" /> {p.author}</span>
-            <span className="flex items-center gap-2"><Calendar className="w-4 h-4 text-brand" /> {p.date}</span>
-            <span className="flex items-center gap-2"><Clock className="w-4 h-4 text-brand" /> {p.readTime}</span>
+            <span className="flex items-center gap-2"><Calendar className="w-4 h-4 text-brand" /> {p.published_at.slice(0, 10)}</span>
+            <span className="flex items-center gap-2"><Clock className="w-4 h-4 text-brand" /> {p.read_time}</span>
           </div>
 
-          <div className="aspect-[16/9] rounded-3xl cover-mesh grid place-items-center mb-12 glow-border">
-            <span className="text-7xl font-black text-gradient opacity-50">{p.category[0]}</span>
+          <div className="aspect-[16/9] rounded-3xl cover-mesh grid place-items-center mb-12 glow-border overflow-hidden">
+            {p.cover ? <img src={p.cover} alt={p.title} className="w-full h-full object-cover" loading="lazy" /> : <span className="text-7xl font-black text-gradient opacity-50">★</span>}
           </div>
 
-          <div className="space-y-6">
-            {p.content.map((block: { heading?: string; paragraph: string }, i: number) => (
-              <div key={i}>
-                {block.heading && <h2 className="text-2xl md:text-3xl font-black mt-10 mb-4">{block.heading}</h2>}
-                <p className="text-lg text-muted-foreground leading-loose">{block.paragraph}</p>
+          <div className="space-y-4">{renderContent(p.content)}</div>
+
+          {p.tags.length > 0 && (
+            <div className="mt-12 pt-8 border-t border-border">
+              <div className="flex flex-wrap gap-2">
+                {p.tags.map((t: string) => <span key={t} className="px-4 py-1.5 rounded-full glass text-sm">#{t}</span>)}
               </div>
-            ))}
-          </div>
-
-          <div className="mt-12 pt-8 border-t border-border">
-            <div className="flex flex-wrap gap-2">
-              {p.tags.map((t: string) => (
-                <span key={t} className="px-4 py-1.5 rounded-full glass text-sm">#{t}</span>
-              ))}
             </div>
-          </div>
-        </div>
-
-        <div className="container-x max-w-5xl mt-20">
-          <h3 className="text-2xl md:text-3xl font-black mb-8">مقالات ذات صلة</h3>
-          <div className="grid md:grid-cols-3 gap-6">
-            {related.map((r) => (
-              <Link key={r.slug} to="/blog/$slug" params={{ slug: r.slug }} className="group glass rounded-2xl overflow-hidden hover:border-brand/50 transition">
-                <div className="aspect-[16/9] cover-mesh grid place-items-center">
-                  <span className="text-3xl font-black text-gradient opacity-40">#{r.category[0]}</span>
-                </div>
-                <div className="p-5">
-                  <span className="text-xs font-bold text-brand">{r.category}</span>
-                  <h4 className="text-base font-bold mt-2 group-hover:text-brand transition line-clamp-2">{r.title}</h4>
-                </div>
-              </Link>
-            ))}
-          </div>
+          )}
         </div>
       </article>
       <Footer />
