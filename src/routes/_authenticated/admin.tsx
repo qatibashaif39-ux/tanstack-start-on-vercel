@@ -3,7 +3,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import {
   Code2, LogOut, FileText, FolderKanban, MessageSquare,
   Plus, Trash2, Edit3, Save, X, Eye, EyeOff, Shield,
@@ -35,7 +34,7 @@ function AdminPage() {
   const adminQ = useQuery({ queryKey: ["is-admin"], queryFn: () => checkAdmin() });
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    document.cookie = "admin_session=; path=/; max-age=0";
     navigate({ to: "/auth" });
   };
 

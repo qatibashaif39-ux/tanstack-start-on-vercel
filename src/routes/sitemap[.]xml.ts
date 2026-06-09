@@ -7,24 +7,24 @@ export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async () => {
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { getDb } = await import("@/lib/db.server");
+        const db = getDb();
         const today = new Date().toISOString().split("T")[0];
-        const [{ data: projects }, { data: posts }] = await Promise.all([
-          supabaseAdmin.from("projects").select("slug").eq("published", true),
-          supabaseAdmin.from("posts").select("slug, published_at").eq("published", true),
-        ]);
+
+        const projects = db.prepare("SELECT slug FROM projects WHERE published = 1").all() as { slug: string }[];
+        const posts = db.prepare("SELECT slug, published_at FROM posts WHERE published = 1").all() as { slug: string; published_at: string }[];
 
         const staticEntries = [
           { path: "/", changefreq: "weekly", priority: "1.0", lastmod: today },
           { path: "/works", changefreq: "weekly", priority: "0.9", lastmod: today },
           { path: "/blog", changefreq: "daily", priority: "0.9", lastmod: today },
         ];
-        const workEntries = (projects ?? []).map((p) => ({
+        const workEntries = projects.map((p) => ({
           path: `/works/${p.slug}`, changefreq: "monthly", priority: "0.7", lastmod: today,
         }));
-        const blogEntries = (posts ?? []).map((p) => ({
+        const blogEntries = posts.map((p) => ({
           path: `/blog/${p.slug}`, changefreq: "monthly", priority: "0.7",
-          lastmod: (p.published_at as string)?.slice(0, 10) ?? today,
+          lastmod: p.published_at?.slice(0, 10) ?? today,
         }));
 
         const urls = [...staticEntries, ...workEntries, ...blogEntries].map((e) => `  <url>
@@ -46,3 +46,4 @@ ${urls}
     },
   },
 });
+

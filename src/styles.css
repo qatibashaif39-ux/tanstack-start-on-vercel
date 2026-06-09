@@ -101,6 +101,9 @@
     background-image: var(--gradient-mesh);
     background-attachment: fixed;
   }
+  @media (max-width: 767px) {
+    body { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
+  }
   h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.02em; }
   ::selection { background: oklch(0.68 0.13 230 / 0.35); color: var(--color-foreground); }
   img { content-visibility: auto; }
@@ -188,4 +191,8 @@
     linear-gradient(to right, oklch(1 0 0 / 0.04) 1px, transparent 1px),
     linear-gradient(to bottom, oklch(1 0 0 / 0.04) 1px, transparent 1px);
   background-size: 60px 60px;
+}
+
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
 }

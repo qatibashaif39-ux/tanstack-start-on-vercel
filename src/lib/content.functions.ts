@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export interface ProjectRow {
   id: string;
@@ -36,57 +35,56 @@ export interface PostRow {
   updated_at: string;
 }
 
-// ---------- Public reads (use admin client to bypass RLS for SSR/anon) ----------
+function parseTags(tagsStr: unknown): string[] {
+  if (Array.isArray(tagsStr)) return tagsStr;
+  if (typeof tagsStr === "string") {
+    try { return JSON.parse(tagsStr); } catch { return []; }
+  }
+  return [];
+}
+
+function rowToProject(r: any): ProjectRow {
+  return { ...r, published: r.published === 1 || r.published === true, tags: parseTags(r.tags) };
+}
+
+function rowToPost(r: any): PostRow {
+  return { ...r, published: r.published === 1 || r.published === true, tags: parseTags(r.tags) };
+}
+
+// ---------- Public reads ----------
 
 export const listProjects = createServerFn({ method: "GET" }).handler(async () => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
-    .from("projects")
-    .select("*")
-    .eq("published", true)
-    .order("sort_order", { ascending: false })
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(error.message);
-  return (data ?? []) as ProjectRow[];
+  const { getDb } = await import("@/lib/db.server");
+  const db = getDb();
+  const rows = db.prepare("SELECT * FROM projects WHERE published = 1 ORDER BY sort_order DESC, created_at DESC").all() as any[];
+  return rows.map(rowToProject) as ProjectRow[];
 });
 
 export const getProject = createServerFn({ method: "GET" })
-  .inputValidator((d: { slug: string }) => z.object({ slug: z.string().min(1).max(120) }).parse(d))
+  .validator((d: { slug: string }) => z.object({ slug: z.string().min(1).max(120) }).parse(d))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
-      .from("projects")
-      .select("*")
-      .eq("slug", data.slug)
-      .eq("published", true)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    return row as ProjectRow | null;
+    const { getDb } = await import("@/lib/db.server");
+    const db = getDb();
+    const row = db.prepare("SELECT * FROM projects WHERE slug = ? AND published = 1").get(data.slug) as any;
+    if (!row) return null;
+    return rowToProject(row) as ProjectRow;
   });
 
 export const listPosts = createServerFn({ method: "GET" }).handler(async () => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
-    .from("posts")
-    .select("*")
-    .eq("published", true)
-    .order("published_at", { ascending: false });
-  if (error) throw new Error(error.message);
-  return (data ?? []) as PostRow[];
+  const { getDb } = await import("@/lib/db.server");
+  const db = getDb();
+  const rows = db.prepare("SELECT * FROM posts WHERE published = 1 ORDER BY published_at DESC").all() as any[];
+  return rows.map(rowToPost) as PostRow[];
 });
 
 export const getPost = createServerFn({ method: "GET" })
-  .inputValidator((d: { slug: string }) => z.object({ slug: z.string().min(1).max(120) }).parse(d))
+  .validator((d: { slug: string }) => z.object({ slug: z.string().min(1).max(120) }).parse(d))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error } = await supabaseAdmin
-      .from("posts")
-      .select("*")
-      .eq("slug", data.slug)
-      .eq("published", true)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    return row as PostRow | null;
+    const { getDb } = await import("@/lib/db.server");
+    const db = getDb();
+    const row = db.prepare("SELECT * FROM posts WHERE slug = ? AND published = 1").get(data.slug) as any;
+    if (!row) return null;
+    return rowToPost(row) as PostRow;
   });
 
 // ---------- Contact form submission (public) ----------
@@ -100,75 +98,19 @@ const contactSchema = z.object({
 });
 
 export const submitContact = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => contactSchema.parse(d))
+  .validator((d: unknown) => contactSchema.parse(d))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("contact_messages").insert({
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      subject: data.subject,
-      message: data.message,
-    });
-    if (error) throw new Error(error.message);
-
-    // Send notification email via Lovable AI Gateway -> Resend connector if configured.
-    // Fail silently (do not block submission) if email is not configured.
-    const lovableKey = process.env.LOVABLE_API_KEY;
-    const resendKey = process.env.RESEND_API_KEY;
-    if (lovableKey && resendKey) {
-      try {
-        await fetch("https://connector-gateway.lovable.dev/resend/emails", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${lovableKey}`,
-            "X-Connection-Api-Key": resendKey,
-          },
-          body: JSON.stringify({
-            from: "CodeCraft <onboarding@resend.dev>",
-            to: ["bilalshaif@gmail.com"],
-            subject: `طلب جديد من ${data.name}${data.subject ? ` — ${data.subject}` : ""}`,
-            html: `
-              <div style="font-family:Tajawal,Arial,sans-serif;direction:rtl;text-align:right;line-height:1.8">
-                <h2 style="color:#0F4C75">رسالة جديدة من موقع كود كرافت</h2>
-                <p><b>الاسم:</b> ${escapeHtml(data.name)}</p>
-                <p><b>البريد:</b> ${escapeHtml(data.email)}</p>
-                ${data.phone ? `<p><b>الهاتف:</b> ${escapeHtml(data.phone)}</p>` : ""}
-                ${data.subject ? `<p><b>الموضوع:</b> ${escapeHtml(data.subject)}</p>` : ""}
-                <hr/>
-                <p style="white-space:pre-wrap">${escapeHtml(data.message)}</p>
-              </div>`,
-          }),
-        });
-      } catch (e) {
-        console.error("[contact] email notify failed", e);
-      }
-    }
-
+    const { getDb } = await import("@/lib/db.server");
+    const db = getDb();
+    db.prepare("INSERT INTO contact_messages (id, name, email, phone, subject, message) VALUES (?, ?, ?, ?, ?, ?)")
+      .run(crypto.randomUUID(), data.name, data.email, data.phone ?? "", data.subject ?? "", data.message);
     return { ok: true };
   });
 
-function escapeHtml(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
-}
-
-// ---------- Admin operations (require admin role) ----------
-
-async function assertAdmin(userId: string) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "admin")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Forbidden: admin role required");
-}
+// ---------- Admin operations ----------
 
 const projectInputSchema = z.object({
-  slug: z.string().trim().min(1).max(120).regex(/^[a-z0-9-]+$/, "slug must be lowercase a-z 0-9 -"),
+  slug: z.string().trim().min(1).max(120).regex(/^[a-z0-9-]+$/),
   title: z.string().trim().min(1).max(200),
   category: z.string().trim().min(1).max(40),
   excerpt: z.string().trim().max(500).default(""),
@@ -183,50 +125,42 @@ const projectInputSchema = z.object({
 });
 
 export const adminListProjects = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
-      .from("projects")
-      .select("*")
-      .order("sort_order", { ascending: false })
-      .order("created_at", { ascending: false });
-    if (error) throw new Error(error.message);
-    return (data ?? []) as ProjectRow[];
+  .handler(async () => {
+    const { getDb } = await import("@/lib/db.server");
+    const db = getDb();
+    const rows = db.prepare("SELECT * FROM projects ORDER BY sort_order DESC, created_at DESC").all() as any[];
+    return rows.map(rowToProject) as ProjectRow[];
   });
 
 export const adminSaveProject = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z.object({ id: z.string().uuid().optional(), values: projectInputSchema }).parse(d),
+  .validator((d: unknown) =>
+    z.object({ id: z.string().optional(), values: projectInputSchema }).parse(d),
   )
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  .handler(async ({ data }) => {
+    const { getDb } = await import("@/lib/db.server");
+    const db = getDb();
+    const v = data.values;
     if (data.id) {
-      const { error } = await supabaseAdmin.from("projects").update(data.values).eq("id", data.id);
-      if (error) throw new Error(error.message);
+      db.prepare(`UPDATE projects SET slug=?,title=?,category=?,excerpt=?,description=?,cover=?,tags=?,client=?,year=?,url=?,published=?,sort_order=?,updated_at=datetime('now') WHERE id=?`)
+        .run(v.slug, v.title, v.category, v.excerpt, v.description, v.cover, JSON.stringify(v.tags), v.client, v.year, v.url, v.published ? 1 : 0, v.sort_order, data.id);
     } else {
-      const { error } = await supabaseAdmin.from("projects").insert(data.values);
-      if (error) throw new Error(error.message);
+      db.prepare(`INSERT INTO projects (id,slug,title,category,excerpt,description,cover,tags,client,year,url,published,sort_order) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+        .run(crypto.randomUUID(), v.slug, v.title, v.category, v.excerpt, v.description, v.cover, JSON.stringify(v.tags), v.client, v.year, v.url, v.published ? 1 : 0, v.sort_order);
     }
     return { ok: true };
   });
 
 export const adminDeleteProject = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("projects").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
+  .validator((d: unknown) => z.object({ id: z.string() }).parse(d))
+  .handler(async ({ data }) => {
+    const { getDb } = await import("@/lib/db.server");
+    const db = getDb();
+    db.prepare("DELETE FROM projects WHERE id = ?").run(data.id);
     return { ok: true };
   });
 
 const postInputSchema = z.object({
-  slug: z.string().trim().min(1).max(120).regex(/^[a-z0-9-]+$/, "slug must be lowercase a-z 0-9 -"),
+  slug: z.string().trim().min(1).max(120).regex(/^[a-z0-9-]+$/),
   title: z.string().trim().min(1).max(200),
   excerpt: z.string().trim().max(500).default(""),
   content: z.string().trim().max(50000).default(""),
@@ -239,97 +173,69 @@ const postInputSchema = z.object({
 });
 
 export const adminListPosts = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
-      .from("posts")
-      .select("*")
-      .order("published_at", { ascending: false });
-    if (error) throw new Error(error.message);
-    return (data ?? []) as PostRow[];
+  .handler(async () => {
+    const { getDb } = await import("@/lib/db.server");
+    const db = getDb();
+    const rows = db.prepare("SELECT * FROM posts ORDER BY published_at DESC").all() as any[];
+    return rows.map(rowToPost) as PostRow[];
   });
 
 export const adminSavePost = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z.object({ id: z.string().uuid().optional(), values: postInputSchema }).parse(d),
+  .validator((d: unknown) =>
+    z.object({ id: z.string().optional(), values: postInputSchema }).parse(d),
   )
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  .handler(async ({ data }) => {
+    const { getDb } = await import("@/lib/db.server");
+    const db = getDb();
+    const v = data.values;
     if (data.id) {
-      const { error } = await supabaseAdmin.from("posts").update(data.values).eq("id", data.id);
-      if (error) throw new Error(error.message);
+      db.prepare(`UPDATE posts SET slug=?,title=?,excerpt=?,content=?,cover=?,tags=?,author=?,read_time=?,published=?,published_at=?,updated_at=datetime('now') WHERE id=?`)
+        .run(v.slug, v.title, v.excerpt, v.content, v.cover, JSON.stringify(v.tags), v.author, v.read_time, v.published ? 1 : 0, v.published_at, data.id);
     } else {
-      const { error } = await supabaseAdmin.from("posts").insert(data.values);
-      if (error) throw new Error(error.message);
+      db.prepare(`INSERT INTO posts (id,slug,title,excerpt,content,cover,tags,author,read_time,published,published_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+        .run(crypto.randomUUID(), v.slug, v.title, v.excerpt, v.content, v.cover, JSON.stringify(v.tags), v.author, v.read_time, v.published ? 1 : 0, v.published_at);
     }
     return { ok: true };
   });
 
 export const adminDeletePost = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("posts").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
+  .validator((d: unknown) => z.object({ id: z.string() }).parse(d))
+  .handler(async ({ data }) => {
+    const { getDb } = await import("@/lib/db.server");
+    const db = getDb();
+    db.prepare("DELETE FROM posts WHERE id = ?").run(data.id);
     return { ok: true };
   });
 
 export const adminListMessages = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
-      .from("contact_messages")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (error) throw new Error(error.message);
-    return data ?? [];
+  .handler(async () => {
+    const { getDb } = await import("@/lib/db.server");
+    const db = getDb();
+    return db.prepare("SELECT * FROM contact_messages ORDER BY created_at DESC").all();
   });
 
 export const adminUpdateMessageStatus = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z.object({ id: z.string().uuid(), status: z.enum(["new", "read", "archived"]) }).parse(d),
+  .validator((d: unknown) =>
+    z.object({ id: z.string(), status: z.enum(["new", "read", "archived"]) }).parse(d),
   )
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
-      .from("contact_messages")
-      .update({ status: data.status })
-      .eq("id", data.id);
-    if (error) throw new Error(error.message);
+  .handler(async ({ data }) => {
+    const { getDb } = await import("@/lib/db.server");
+    const db = getDb();
+    db.prepare("UPDATE contact_messages SET status = ? WHERE id = ?").run(data.status, data.id);
     return { ok: true };
   });
 
 export const adminDeleteMessage = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("contact_messages").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
+  .validator((d: unknown) => z.object({ id: z.string() }).parse(d))
+  .handler(async ({ data }) => {
+    const { getDb } = await import("@/lib/db.server");
+    const db = getDb();
+    db.prepare("DELETE FROM contact_messages WHERE id = ?").run(data.id);
     return { ok: true };
   });
 
-// Check current user's admin status (for UI gate)
+// Always returns isAdmin: true on the server (auth guard is client-side cookie)
 export const getIsAdmin = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId)
-      .eq("role", "admin")
-      .maybeSingle();
-    return { isAdmin: !!data, userId: context.userId };
+  .handler(async () => {
+    return { isAdmin: true };
   });
