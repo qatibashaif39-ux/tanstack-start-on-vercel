@@ -131,7 +131,7 @@ function ProjectsTab() {
         </button>
       </div>
       <div className="space-y-3">
-        {q.data?.map((p) => (
+        {q.data?.map((p: ProjectRow) => (
           <div key={p.id} className="glass rounded-xl p-4 flex flex-wrap items-center gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
@@ -169,6 +169,27 @@ function ProjectForm({ initial, onCancel, onSave, saving }: { initial: ProjectRo
     published: initial?.published ?? true,
     sort_order: initial?.sort_order ?? 0,
   });
+  
+  const [uploading, setUploading] = useState(false);
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (!res.ok) throw new Error("فشل الرفع");
+      const data = await res.json();
+      setF({ ...f, cover: data.url });
+      toast.success("تم رفع الصورة بنجاح");
+    } catch (error) {
+      toast.error("حدث خطأ أثناء رفع الصورة");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSave({ ...f, tags: f.tags.split(",").map((t) => t.trim()).filter(Boolean) }, initial?.id); }}
       className="glass rounded-2xl p-6 space-y-4">
@@ -178,14 +199,27 @@ function ProjectForm({ initial, onCancel, onSave, saving }: { initial: ProjectRo
         <Field label="المعرّف (slug)"><input required value={f.slug} onChange={(e) => setF({ ...f, slug: e.target.value })} pattern="[a-z0-9-]+" className={inputCls} /></Field>
         <Field label="الفئة">
           <select value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} className={inputCls}>
-            <option value="web">ويب</option><option value="mobile">جوال</option><option value="ecommerce">متاجر</option><option value="cloud">سحابة</option><option value="ui">تصميم</option>
+            <option className="bg-surface text-foreground" value="web">ويب</option>
+            <option className="bg-surface text-foreground" value="mobile">جوال</option>
+            <option className="bg-surface text-foreground" value="ecommerce">متاجر</option>
+            <option className="bg-surface text-foreground" value="cloud">سحابة</option>
+            <option className="bg-surface text-foreground" value="ui">تصميم</option>
           </select>
         </Field>
         <Field label="العميل"><input value={f.client} onChange={(e) => setF({ ...f, client: e.target.value })} className={inputCls} /></Field>
         <Field label="السنة"><input value={f.year} onChange={(e) => setF({ ...f, year: e.target.value })} className={inputCls} /></Field>
         <Field label="رابط المشروع"><input value={f.url} onChange={(e) => setF({ ...f, url: e.target.value })} className={inputCls} /></Field>
       </Grid2>
-      <Field label="رابط صورة الغلاف (URL)"><input value={f.cover} onChange={(e) => setF({ ...f, cover: e.target.value })} className={inputCls} placeholder="https://…" /></Field>
+      <Field label="صورة الغلاف (رابط أو رفع)">
+        <div className="flex gap-2 items-center">
+          <input value={f.cover} onChange={(e) => setF({ ...f, cover: e.target.value })} className={inputCls} placeholder="https://… أو /uploads/..." />
+          <label className={`flex items-center justify-center bg-[var(--gradient-brand)] text-primary-foreground px-4 py-2 rounded-lg cursor-pointer hover:shadow-[var(--shadow-glow)] transition disabled:opacity-50 shrink-0 ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+            {uploading ? "جاري الرفع..." : "اختر صورة"}
+            <input type="file" className="hidden" accept="image/*" onChange={handleUpload} disabled={uploading} />
+          </label>
+        </div>
+        {f.cover && <img src={f.cover} alt="Cover Preview" className="mt-3 h-24 w-auto object-cover rounded-xl border border-border" />}
+      </Field>
       <Field label="وصف مختصر"><textarea rows={2} value={f.excerpt} onChange={(e) => setF({ ...f, excerpt: e.target.value })} className={inputCls} /></Field>
       <Field label="الوصف الكامل"><textarea rows={5} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} className={inputCls} /></Field>
       <Field label="الوسوم (مفصولة بفاصلة)"><input value={f.tags} onChange={(e) => setF({ ...f, tags: e.target.value })} className={inputCls} placeholder="React, TypeScript" /></Field>
@@ -235,7 +269,7 @@ function PostsTab() {
         </button>
       </div>
       <div className="space-y-3">
-        {q.data?.map((p) => (
+        {q.data?.map((p: PostRow) => (
           <div key={p.id} className="glass rounded-xl p-4 flex flex-wrap items-center gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
@@ -271,6 +305,26 @@ function PostForm({ initial, onCancel, onSave, saving }: { initial: PostRow | nu
     published: initial?.published ?? true,
     published_at: (initial?.published_at ?? new Date().toISOString()).slice(0, 10),
   });
+  const [uploading, setUploading] = useState(false);
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (!res.ok) throw new Error("فشل الرفع");
+      const data = await res.json();
+      setF({ ...f, cover: data.url });
+      toast.success("تم رفع الصورة بنجاح");
+    } catch (error) {
+      toast.error("حدث خطأ أثناء رفع الصورة");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSave({ ...f, tags: f.tags.split(",").map((t) => t.trim()).filter(Boolean), published_at: new Date(f.published_at).toISOString() }, initial?.id); }}
       className="glass rounded-2xl p-6 space-y-4">
@@ -281,7 +335,16 @@ function PostForm({ initial, onCancel, onSave, saving }: { initial: PostRow | nu
         <Field label="المؤلف"><input value={f.author} onChange={(e) => setF({ ...f, author: e.target.value })} className={inputCls} /></Field>
         <Field label="مدة القراءة"><input value={f.read_time} onChange={(e) => setF({ ...f, read_time: e.target.value })} className={inputCls} /></Field>
         <Field label="تاريخ النشر"><input type="date" value={f.published_at} onChange={(e) => setF({ ...f, published_at: e.target.value })} className={inputCls} /></Field>
-        <Field label="رابط صورة الغلاف"><input value={f.cover} onChange={(e) => setF({ ...f, cover: e.target.value })} className={inputCls} /></Field>
+        <Field label="صورة الغلاف (رابط أو رفع)">
+          <div className="flex gap-2 items-center">
+            <input value={f.cover} onChange={(e) => setF({ ...f, cover: e.target.value })} className={inputCls} placeholder="https://… أو /uploads/..." />
+            <label className={`flex items-center justify-center bg-[var(--gradient-brand)] text-primary-foreground px-4 py-2 rounded-lg cursor-pointer hover:shadow-[var(--shadow-glow)] transition disabled:opacity-50 shrink-0 ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+              {uploading ? "جاري الرفع..." : "اختر صورة"}
+              <input type="file" className="hidden" accept="image/*" onChange={handleUpload} disabled={uploading} />
+            </label>
+          </div>
+          {f.cover && <img src={f.cover} alt="Cover Preview" className="mt-3 h-24 w-auto object-cover rounded-xl border border-border" />}
+        </Field>
       </Grid2>
       <Field label="مقتطف"><textarea rows={2} value={f.excerpt} onChange={(e) => setF({ ...f, excerpt: e.target.value })} className={inputCls} /></Field>
       <Field label="المحتوى (Markdown مبسّط — استخدم ## للعناوين الفرعية)">
